@@ -5,6 +5,7 @@
   },
   "main": "/index.js",
   "devDependencies": {
+    "@types/react": "^18.2.18",
     "react-scripts": "^5.0.1"
   },
   "name": "minesweeper",
