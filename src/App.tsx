@@ -1,12 +1,18 @@
 import React, { useState } from "react";
 
-type Grid = number[][];
+// value type, timer, graphics, snake
+// https://www.typescriptlang.org/docs/handbook/2/narrowing.html
+// https://stackoverflow.com/questions/59988667/typescript-react-fcprops-confusion
+type Value = number;
+type Grid = Value[][];
+
 interface BoardProps {
   squares: Grid;
   onPlay: Function;
 }
+
 interface SquareProps {
-  value: number;
+  value: Value;
   onSquareClick: React.MouseEventHandler;
 }
 
@@ -19,8 +25,8 @@ function Board({squares, onPlay}: BoardProps) {
     // if (calculateWin(squares)) {
     //   return;
     // }
-    const nextSquares = squares.map((arr: any[]) => arr.slice());
-    nextSquares[r][c] = "x";
+    const nextSquares = squares.map((arr: Value[]) => arr.slice());
+    nextSquares[r][c]++;
     onPlay(nextSquares);
   }
 
@@ -35,7 +41,7 @@ function Board({squares, onPlay}: BoardProps) {
     // const row = squares[r].map((square, c) => {
     //   <Square key={c} value={c} onSquareClick={() => handleClick(r, c)} />
     // });
-    board[r] = <div key={r} className="board-row">{row}{row[0]}</div>;
+    board[r] = <div key={r} className="board-row">{row}</div>;
   }
 
   return (
