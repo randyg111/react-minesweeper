@@ -1,15 +1,18 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
-function Square() {
-  return <button className="square"></button>;
+function Square({value, onSquareClick}) {
+  return <button className="square" onClick={onSquareClick}>{value}</button>;
 }
 
-function Board({squares}) {
-  // function handleClick(i) {
-  //   if (calculateWin(squares)) {
-  //     return;
-  //   }
-  // }
+function Board({squares, onPlay}) {
+  function handleClick(r, c) {
+    // if (calculateWin(squares)) {
+    //   return;
+    // }
+    const nextSquares = squares.map(arr => arr.slice());
+    nextSquares[r][c] = "x";
+    onPlay(nextSquares);
+  }
 
   const rows = squares.length;
   const cols = squares[0].length;
@@ -17,8 +20,11 @@ function Board({squares}) {
   for (let r = 0; r < rows; r++) {
     let row = Array(cols);
     for (let c = 0; c < cols; c++) {
-      row[c] = <Square key={c} />;
+        row[c] = <Square key={c} value={squares[r][c]} onSquareClick={() => handleClick(r, c)} />;
     }
+    // const row = squares[r].map((square, c) => {
+    //   <Square key={c} value={square} onSquareClick={() => handleClick(r, c)} />
+    // });
     board[r] = <div key={r} className="board-row">{row}</div>;
   }
 
@@ -31,14 +37,17 @@ function Board({squares}) {
 }
 
 export default function Game() {
-  const rows = 3;
-  const cols = 3;
-  const [grid, setGrid] = useState([Array(rows).fill(Array(cols).fill(null))]);
+  const rows = 8;
+  const cols = 8;
+  const [grid, setGrid] = useState(Array(rows).fill(Array(cols).fill(null)));
+  function handlePlay(nextGrid) {
+    setGrid(nextGrid);
+  }
 
   return (
     <div className="game">
       <div className="game-board">
-        <Board squares={grid}/>
+        <Board squares={grid} onPlay={handlePlay}/>
       </div>
       <div className="game-info">
         
