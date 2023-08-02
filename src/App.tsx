@@ -3,12 +3,14 @@ import React, { useMemo, useState } from "react";
 // chording, retry button, custom difficulty, timer, graphics, snake
 type Value = "💥" | "🚩" | "⬜" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 type Grid = Value[][];
+type GridFunc = (grid: Grid, r: number, c: number) => number;
 
 const rows = 8;
 const cols = 8;
 const mines = 10;
 var flags = mines;
-var status = "";
+var status = "Reveal all safe squares to win!";
+var clicks = 0;
 
 interface BoardProps {
   squares: Grid;
@@ -22,19 +24,26 @@ interface SquareProps {
 }
 
 function Square({value, onSquareClick}: SquareProps) {
-  return <button className="square" onClick={onSquareClick} onContextMenu={onSquareClick}>{value}</button>;
+  return <button className="square" onMouseDown={onSquareClick} onMouseUp={onSquareClick} onAuxClick={onSquareClick} 
+    onClick={onSquareClick} onContextMenu={onSquareClick}>{value}</button>;
 }
 
 function Board({squares, onPlay, hiddenSquares}: BoardProps) {
   const handleClick = (e: React.MouseEvent, r: number, c: number) => {
-    if (e.type === "contextmenu") {
-      e.preventDefault();
-    }
+    e.preventDefault();
     if (calculateWin(squares) || calculateLose()) {
       return;
     }
+    if (e.type === "mousedown") {
+      clicks++;
+    }
+    if (e.type === "mouseup") {
+      clicks--;
+    }
     const nextSquares = squares.map(arr => arr.slice()) as Grid;
-    if (e.type === "click") {
+    if (e.type === "auxclick" || clicks >= 2) {
+      handleChord(nextSquares, r, c);
+    } else if (e.type === "click") {
       handleLeftClick(nextSquares, r, c);
     } else if (e.type === "contextmenu") {
       handleRightClick(nextSquares, r, c);
@@ -64,6 +73,18 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
     return false;
   }
 
+  function handleChord(nextSquares: Grid, r: number, c: number) {
+    if (nextSquares[r][c] !== null && typeof nextSquares[r][c] !== "string") {
+      const adjFlags = adjFunc(nextSquares, r, c, (grid, r, c) => {
+        if (grid[r][c] === "🚩") return 1;
+        return 0;
+      });
+      if (adjFlags === nextSquares[r][c]) {
+        adjFunc(nextSquares, r, c, handleLeftClick);
+      }
+    }
+  }
+
   function handleRightClick(nextSquares: Grid, r: number, c: number) {
     if (nextSquares[r][c] === "🚩") {
       nextSquares[r][c] = null;
@@ -75,18 +96,11 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
   }
 
   function handleLeftClick(nextSquares: Grid, r: number, c: number) {
-    if (r < 0 || c < 0 || r >= rows || c >= cols) return;
+    if (r < 0 || c < 0 || r >= rows || c >= cols || nextSquares[r][c] !== null) return 0;
     if (hiddenSquares[r][c] === 0) {
       hiddenSquares[r][c] = "⬜";
       nextSquares[r][c] = "⬜";
-      handleLeftClick(nextSquares, r+1, c+1);
-      handleLeftClick(nextSquares, r+1, c);
-      handleLeftClick(nextSquares, r+1, c-1);
-      handleLeftClick(nextSquares, r, c+1);
-      handleLeftClick(nextSquares, r, c-1);
-      handleLeftClick(nextSquares, r-1, c+1);
-      handleLeftClick(nextSquares, r-1, c);
-      handleLeftClick(nextSquares, r-1, c-1);
+      adjFunc(nextSquares, r, c, handleLeftClick);
     } else {
       nextSquares[r][c] = hiddenSquares[r][c];
       if (nextSquares[r][c] === "💥") {
@@ -96,6 +110,7 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
     if (calculateWin(nextSquares)) {
       status = "You win!";
     }
+    return 0;
   }
 
   const board = squares.map((row, r) => {
@@ -111,7 +126,7 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
 
   return (
     <>
-      <div className="status">{counter}{'    '}{status}</div>
+      <div className="status">{counter}</div>
       {board}
     </>
   );
@@ -131,33 +146,16 @@ export default function Game() {
       const c = loc % rows;
       temp[r][c] = "💥";
 
-      colCheck(temp, r, c);
-      if (r > 0) {
-        colCheck(temp, r-1, c);
-      }
-      if (r < rows - 1) {
-        colCheck(temp, r+1, c);
-      }
+      adjFunc(temp, r, c, (grid, r, c) => {
+        const val = grid[r][c];
+        if (val !== null && typeof val !== "string") {
+          grid[r][c] = val + 1 as Value;
+        }
+        return 0;
+      });
     }
     return temp;
   }, []);
-
-  function colCheck(grid: Grid, r: number, c: number) {
-    increment(grid, r, c);
-    if (c > 0) {
-      increment(grid, r, c-1);
-    }
-    if (c < cols - 1) {
-      increment(grid, r, c+1);
-    }
-  }
-
-  function increment(grid: Grid, r: number, c: number) {
-    const val = grid[r][c];
-    if (val !== null && typeof val !== "string") {
-      grid[r][c] = val + 1 as Value;
-    }
-  }
   
 
   function handlePlay(nextGrid: Grid) {
@@ -170,8 +168,32 @@ export default function Game() {
         <Board squares={grid} onPlay={handlePlay} hiddenSquares={hidden} />
       </div>
       <div className="game-info">
-        
+        {status}
       </div>
     </div>
   )
+}
+
+function adjFunc(grid: Grid, r: number, c: number, func: GridFunc) {
+  let num = 0;
+  num += colFunc(grid, r, c, func);
+  if (r > 0) {
+    num += colFunc(grid, r-1, c, func);
+  }
+  if (r < rows - 1) {
+    num += colFunc(grid, r+1, c, func);
+  }
+  return num;
+}
+
+function colFunc(grid: Grid, r: number, c: number, func: GridFunc) {
+  let num = 0;
+  num += func(grid, r, c);
+  if (c > 0) {
+    num += func(grid, r, c-1);
+  }
+  if (c < cols - 1) {
+    num += func(grid, r, c+1);
+  }
+  return num;
 }
