@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 
-// value type, timer, graphics, snake
-// https://www.typescriptlang.org/docs/handbook/2/narrowing.html
-// https://stackoverflow.com/questions/59988667/typescript-react-fcprops-confusion
-type Value = number;
+// timer, graphics, snake
+type Value = "💥" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | null;
 type Grid = Value[][];
 
 interface BoardProps {
@@ -26,23 +24,16 @@ function Board({squares, onPlay}: BoardProps) {
     //   return;
     // }
     const nextSquares = squares.map((arr: Value[]) => arr.slice());
-    nextSquares[r][c]++;
+    nextSquares[r][c] = "💥";
     onPlay(nextSquares);
   }
 
-  const rows = squares.length;
-  const cols = squares[0].length;
-  const board = Array(rows);
-  for (let r = 0; r < rows; r++) {
-    const row = Array(cols);
-    for (let c = 0; c < cols; c++) {
-        row[c] = <Square key={c} value={squares[r][c]} onSquareClick={() => handleClick(r, c)} />
-    }
-    // const row = squares[r].map((square, c) => {
-    //   <Square key={c} value={c} onSquareClick={() => handleClick(r, c)} />
-    // });
-    board[r] = <div key={r} className="board-row">{row}</div>;
-  }
+  const board = squares.map((row, r) => {
+    const boardRow = row.map((square, c) => {
+      return <Square key={c} value={square} onSquareClick={() => handleClick(r, c)} />
+    });
+    return <div key={r} className="board-row">{boardRow}</div>
+  })
 
   return (
     <>
@@ -55,7 +46,7 @@ function Board({squares, onPlay}: BoardProps) {
 export default function Game() {
   const rows = 8;
   const cols = 8;
-  const [grid, setGrid] = useState<Grid>(Array(rows).fill(Array(cols).fill(0)));
+  const [grid, setGrid] = useState<Grid>(Array(rows).fill(Array(cols).fill(null)));
   function handlePlay(nextGrid: Grid) {
     setGrid(nextGrid);
   }
