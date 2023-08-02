@@ -29,8 +29,25 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
     //   return;
     // }
     const nextSquares = squares.map(arr => arr.slice()) as Grid;
-    nextSquares[r][c] = hiddenSquares[r][c];
+    recur(nextSquares, r, c);
     onPlay(nextSquares);
+  }
+
+  function recur(nextSquares: Grid, r: number, c: number) {
+    if (r < 0 || c < 0 || r >= rows || c >= cols) return;
+    if (hiddenSquares[r][c] === 0) {
+      hiddenSquares[r][c] = null;
+      recur(nextSquares, r+1, c+1);
+      recur(nextSquares, r+1, c);
+      recur(nextSquares, r+1, c-1);
+      recur(nextSquares, r, c+1);
+      recur(nextSquares, r, c-1);
+      recur(nextSquares, r-1, c+1);
+      recur(nextSquares, r-1, c);
+      recur(nextSquares, r-1, c-1);
+    } else if (hiddenSquares[r][c] !== null) {
+      nextSquares[r][c] = hiddenSquares[r][c];
+    }
   }
 
   const board = squares.map((row, r) => {
@@ -61,7 +78,7 @@ export default function Game() {
       const r = Math.floor(loc / rows);
       const c = loc % rows;
       temp[r][c] = "💥";
-      
+
       colCheck(temp, r, c);
       if (r > 0) {
         increment(temp, r-1, c);
