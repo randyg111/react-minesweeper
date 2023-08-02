@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 
 // timer, graphics, snake
-type Value = "💥" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
+type Value = "💥" | "🚩" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 type Grid = Value[][];
 
 const rows = 8;
@@ -20,31 +20,37 @@ interface SquareProps {
 }
 
 function Square({value, onSquareClick}: SquareProps) {
-  return <button className="square" onClick={onSquareClick}>{value}</button>;
+  return <button className="square" onClick={onSquareClick} onContextMenu={onSquareClick}>{value}</button>;
 }
 
 function Board({squares, onPlay, hiddenSquares}: BoardProps) {
-  function handleClick(r: number, c: number) {
-    // if (calculateWin(squares)) {
-    //   return;
-    // }
+  const handleClick = (e: React.MouseEvent, r: number, c: number) => {
     const nextSquares = squares.map(arr => arr.slice()) as Grid;
-    recur(nextSquares, r, c);
+    if (e.type === 'click') {
+      handleLeftClick(nextSquares, r, c);
+    } else if (e.type === 'contextmenu') {
+      e.preventDefault();
+      handleRightClick(nextSquares, r, c);
+    }
     onPlay(nextSquares);
+  };
+
+  function handleRightClick(nextSquares: Grid, r: number, c: number) {
+    nextSquares[r][c] = "🚩";
   }
 
-  function recur(nextSquares: Grid, r: number, c: number) {
+  function handleLeftClick(nextSquares: Grid, r: number, c: number) {
     if (r < 0 || c < 0 || r >= rows || c >= cols) return;
     if (hiddenSquares[r][c] === 0) {
       hiddenSquares[r][c] = null;
-      recur(nextSquares, r+1, c+1);
-      recur(nextSquares, r+1, c);
-      recur(nextSquares, r+1, c-1);
-      recur(nextSquares, r, c+1);
-      recur(nextSquares, r, c-1);
-      recur(nextSquares, r-1, c+1);
-      recur(nextSquares, r-1, c);
-      recur(nextSquares, r-1, c-1);
+      handleLeftClick(nextSquares, r+1, c+1);
+      handleLeftClick(nextSquares, r+1, c);
+      handleLeftClick(nextSquares, r+1, c-1);
+      handleLeftClick(nextSquares, r, c+1);
+      handleLeftClick(nextSquares, r, c-1);
+      handleLeftClick(nextSquares, r-1, c+1);
+      handleLeftClick(nextSquares, r-1, c);
+      handleLeftClick(nextSquares, r-1, c-1);
     } else if (hiddenSquares[r][c] !== null) {
       nextSquares[r][c] = hiddenSquares[r][c];
     }
@@ -52,7 +58,7 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
 
   const board = squares.map((row, r) => {
     const boardRow = row.map((square, c) => {
-      return <Square key={c} value={square} onSquareClick={() => handleClick(r, c)} />
+      return <Square key={c} value={square} onSquareClick={(e: React.MouseEvent) => handleClick(e, r, c)} />
     });
     return <div key={r} className="board-row">{boardRow}</div>
   })
@@ -103,7 +109,7 @@ export default function Game() {
 
   function increment(grid: Grid, r: number, c: number) {
     const val = grid[r][c];
-    if (val !== null && val !== "💥") {
+    if (val !== null && typeof val !== "string") {
       grid[r][c] = val + 1 as Value;
     }
   }
