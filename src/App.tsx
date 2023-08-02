@@ -1,11 +1,16 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 // timer, graphics, snake
-type Value = "💥" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | null;
+type Value = "💥" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 type Grid = Value[][];
+
+const rows = 8;
+const cols = 8;
+const mines = 10;
 
 interface BoardProps {
   squares: Grid;
+  hiddenSquares: Grid;
   onPlay: Function;
 }
 
@@ -18,13 +23,13 @@ function Square({value, onSquareClick}: SquareProps) {
   return <button className="square" onClick={onSquareClick}>{value}</button>;
 }
 
-function Board({squares, onPlay}: BoardProps) {
+function Board({squares, onPlay, hiddenSquares}: BoardProps) {
   function handleClick(r: number, c: number) {
     // if (calculateWin(squares)) {
     //   return;
     // }
-    const nextSquares = squares.map((arr: Value[]) => arr.slice());
-    nextSquares[r][c] = "💥";
+    const nextSquares = squares.map(arr => arr.slice()) as Grid;
+    nextSquares[r][c] = hiddenSquares[r][c];
     onPlay(nextSquares);
   }
 
@@ -44,9 +49,49 @@ function Board({squares, onPlay}: BoardProps) {
 }
 
 export default function Game() {
-  const rows = 8;
-  const cols = 8;
-  const [grid, setGrid] = useState<Grid>(Array(rows).fill(Array(cols).fill(null)));
+  const [grid, setGrid] = useState<Grid>(Array(rows).fill(null).map(x => Array(cols).fill(null)));
+  const hidden = useMemo(() => {
+    const temp = Array(rows).fill(null).map(x => Array(cols).fill(0)) as Grid;
+    const locs = new Set<number>();
+    while (locs.size < mines) {
+      locs.add(Math.floor(Math.random() * rows * cols));
+    }
+    const locsArr = Array.from(locs);
+    for (let loc of locsArr) {
+      const r = Math.floor(loc / rows);
+      const c = loc % rows;
+      temp[r][c] = "💥";
+      
+      colCheck(temp, r, c);
+      if (r > 0) {
+        increment(temp, r-1, c);
+        colCheck(temp, r-1, c);
+      }
+      if (r < rows - 1) {
+        increment(temp, r+1, c);
+        colCheck(temp, r+1, c);
+      }
+    }
+    return temp;
+  }, []);
+
+  function colCheck(grid: Grid, r: number, c: number) {
+    if (c > 0) {
+      increment(grid, r, c-1);
+    }
+    if (c < cols - 1) {
+      increment(grid, r, c+1);
+    }
+  }
+
+  function increment(grid: Grid, r: number, c: number) {
+    const val = grid[r][c];
+    if (val !== null && val !== "💥") {
+      grid[r][c] = val + 1 as Value;
+    }
+  }
+  
+
   function handlePlay(nextGrid: Grid) {
     setGrid(nextGrid);
   }
@@ -54,7 +99,7 @@ export default function Game() {
   return (
     <div className="game">
       <div className="game-board">
-        <Board squares={grid} onPlay={handlePlay} />
+        <Board squares={grid} onPlay={handlePlay} hiddenSquares={hidden} />
       </div>
       <div className="game-info">
         

@@ -5,5 +5,5 @@
     "react-scripts": "^5.0.0"
   },
   "main": "/index.js",
-  "devDependencies": {}
+  "devDependencies": {"@babel/plugin-proposal-private-property-in-object": "latest"}
 }
