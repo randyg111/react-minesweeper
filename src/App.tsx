@@ -1,26 +1,30 @@
-import React, { useMemo, useState } from "react";
+import React, { useRef, useMemo, useState } from "react";
 
-// retry button, custom difficulty, timer, graphics, snake
+// custom difficulty, timer, graphics, snake
 type Value = "💥" | "🚩" | "⬜" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 type Grid = Value[][];
 type GridFunc = (grid: Grid, r: number, c: number) => number;
 
-const rows = 8;
-const cols = 8;
-const mines = 10;
+var rows = 8;
+var cols = 8;
+var mines = 10;
 var flags = mines;
-var status = "Reveal all safe squares to win!";
 var clicks = 0;
+var retries = 0;
 
 interface BoardProps {
   squares: Grid;
   hiddenSquares: Grid;
-  onPlay: Function;
+  onPlay: (nextGrid: Grid) => void;
 }
 
 interface SquareProps {
   value: Value;
   onSquareClick: React.MouseEventHandler;
+}
+
+interface FormProps {
+  refresh: () => void;
 }
 
 function Square({value, onSquareClick}: SquareProps) {
@@ -31,7 +35,9 @@ function Square({value, onSquareClick}: SquareProps) {
 function Board({squares, onPlay, hiddenSquares}: BoardProps) {
   const handleClick = (e: React.MouseEvent, r: number, c: number) => {
     e.preventDefault();
-    if (calculateWin(squares) || calculateLose()) {
+    if (calculateWin(hiddenSquares, squares)) {
+      return;
+    } else if (calculateLose(squares)) {
       return;
     }
     if (e.type === "mousedown") {
@@ -50,28 +56,6 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
     }
     onPlay(nextSquares);
   };
-
-  function calculateWin(squares: Grid) {
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (hiddenSquares[r][c] !== "💥" && hiddenSquares[r][c] !== squares[r][c]) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  function calculateLose() {
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (squares[r][c] === "💥") {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
 
   function handleChord(nextSquares: Grid, r: number, c: number) {
     if (nextSquares[r][c] !== null && typeof nextSquares[r][c] !== "string") {
@@ -96,19 +80,13 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
   }
 
   function handleLeftClick(nextSquares: Grid, r: number, c: number) {
-    if (r < 0 || c < 0 || r >= rows || c >= cols || nextSquares[r][c] !== null) return 0;
+    if (r < 0 || c < 0 || r >= nextSquares.length || c >= nextSquares[0].length || nextSquares[r][c] !== null) return 0;
     if (hiddenSquares[r][c] === 0) {
       hiddenSquares[r][c] = "⬜";
       nextSquares[r][c] = "⬜";
       adjFunc(nextSquares, r, c, handleLeftClick);
     } else {
       nextSquares[r][c] = hiddenSquares[r][c];
-      if (nextSquares[r][c] === "💥") {
-        status = "You lose!";
-      }
-    }
-    if (calculateWin(nextSquares)) {
-      status = "You win!";
     }
     return 0;
   }
@@ -134,6 +112,7 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
 
 export default function Game() {
   const [grid, setGrid] = useState<Grid>(Array(rows).fill(null).map(x => Array(cols).fill(null)));
+  const [status, setStatus] = useState("Reveal all safe squares to win!");
   const hidden = useMemo(() => {
     const temp = Array(rows).fill(null).map(x => Array(cols).fill(0)) as Grid;
     const locs = new Set<number>();
@@ -141,9 +120,10 @@ export default function Game() {
       locs.add(Math.floor(Math.random() * rows * cols));
     }
     const locsArr = Array.from(locs);
+    console.log(locsArr);
     for (let loc of locsArr) {
-      const r = Math.floor(loc / rows);
-      const c = loc % rows;
+      const r = Math.floor(loc / cols);
+      const c = loc % cols;
       temp[r][c] = "💥";
 
       adjFunc(temp, r, c, (grid, r, c) => {
@@ -155,28 +135,119 @@ export default function Game() {
       });
     }
     return temp;
-  }, [retry]);
+  }, [retries]);
 
   function retry() {
-    setGrid(Array(rows).fill(null).map(x => Array(cols).fill(null)));
+    const status = checkInput();
+    flags = 0;
+    setStatus(status);
+    if (status !== "There are more mines than squares!" && status !== "Negative mines!") {
+      flags = mines;
+      retries++;
+      setGrid(Array(rows).fill(null).map(x => Array(cols).fill(null)));
+    }
   }
-  
+
+  function checkInput() {
+    if (mines < 0) {
+      return "Negative mines!";
+    }
+    if (mines > rows * cols) {
+      return "There are more mines than squares!";
+    }
+    if (mines === rows * cols) {
+      return "You win?!";
+    }
+    return "Reveal all safe squares to win!";
+  }
 
   function handlePlay(nextGrid: Grid) {
+    if(calculateWin(hidden, nextGrid)) {
+      setStatus("You win!");
+    }
+    if(calculateLose(nextGrid)) {
+      setStatus("You lose!");
+      revealMines(nextGrid);
+    }
     setGrid(nextGrid);
   }
 
+  function revealMines(nextSquares: Grid) {
+    for (let r = 0; r < nextSquares.length; r++) {
+      for (let c = 0; c < nextSquares[0].length; c++) {
+        if (hidden[r][c] === "💥") {
+          nextSquares[r][c] = hidden[r][c];
+        }
+      }
+    }
+  }
+
+  // handle mines > r*c
+  // optimize mine generation
+  // 50/50
   return (
     <div className="game">
       <div className="game-board">
         <Board squares={grid} onPlay={handlePlay} hiddenSquares={hidden} />
       </div>
       <div className="game-info">
+        <CustomForm refresh={retry} />
         <button onClick={retry}>Retry</button>
         <p>{status}</p>
       </div>
     </div>
   )
+}
+
+function CustomForm({refresh}: FormProps) {
+  const [rowNum, setRowNum] = useState(8);
+  const [colNum, setColNum] = useState(8);
+  const [mineNum, setMineNum] = useState(10);
+  function handleSubmit(e: React.MouseEvent) {
+    rows = rowNum;
+    cols = colNum;
+    mines = mineNum;
+    refresh();
+  }
+  return (
+    <div>
+      <label>
+        Number of rows: <input value={rowNum} onChange={e => setRowNum(Number(e.target.value))} type="number" />
+      </label>
+      <br />
+      <label>
+        Number of columns: <input value={colNum} onChange={e => setColNum(Number(e.target.value))} type="number" />
+      </label>
+      <br />
+      <label>
+        Number of mines: <input value={mineNum} onChange={e => setMineNum(Number(e.target.value))} type="number" />
+      </label>
+      <br />
+      <button onClick={handleSubmit}>Submit</button>
+    </div>
+  );
+}
+
+function calculateWin(hidden:Grid, squares: Grid) {
+  for (let r = 0; r < squares.length; r++) {
+    for (let c = 0; c < squares[0].length; c++) {
+      if (hidden[r][c] !== "💥" && hidden[r][c] !== squares[r][c]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function calculateLose(squares: Grid) {
+  for (let r = 0; r < squares.length; r++) {
+    for (let c = 0; c < squares[0].length; c++) {
+      if (squares[r][c] === "💥") {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function adjFunc(grid: Grid, r: number, c: number, func: GridFunc) {
@@ -185,7 +256,7 @@ function adjFunc(grid: Grid, r: number, c: number, func: GridFunc) {
   if (r > 0) {
     num += colFunc(grid, r-1, c, func);
   }
-  if (r < rows - 1) {
+  if (r < grid.length - 1) {
     num += colFunc(grid, r+1, c, func);
   }
   return num;
@@ -197,7 +268,7 @@ function colFunc(grid: Grid, r: number, c: number, func: GridFunc) {
   if (c > 0) {
     num += func(grid, r, c-1);
   }
-  if (c < cols - 1) {
+  if (c < grid[0].length - 1) {
     num += func(grid, r, c+1);
   }
   return num;
