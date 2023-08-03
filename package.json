@@ -1,7 +1,11 @@
 {
   "dependencies": {
+    "@types/jest": "^29.5.3",
+    "@types/node": "^20.4.6",
+    "@types/react-dom": "^18.2.7",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "typescript": "^5.1.6"
   },
   "main": "/index.js",
   "devDependencies": {

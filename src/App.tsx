@@ -1,6 +1,6 @@
-import React, { useRef, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
-// custom difficulty, timer, graphics, snake
+// beginner/intermediate/expert difficulties, useEffect, mouse manipulation, timer, graphics, snake
 type Value = "💥" | "🚩" | "⬜" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 type Grid = Value[][];
 type GridFunc = (grid: Grid, r: number, c: number) => number;
@@ -25,6 +25,10 @@ interface SquareProps {
 
 interface FormProps {
   refresh: () => void;
+}
+
+interface TimerProps {
+  time: number;
 }
 
 function Square({value, onSquareClick}: SquareProps) {
@@ -113,6 +117,8 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
 export default function Game() {
   const [grid, setGrid] = useState<Grid>(Array(rows).fill(null).map(x => Array(cols).fill(null)));
   const [status, setStatus] = useState("Reveal all safe squares to win!");
+  const [isRunning, setIsRunning] = useState(false);
+  const [time, setTime] = useState(0);
   const hidden = useMemo(() => {
     const temp = Array(rows).fill(null).map(x => Array(cols).fill(0)) as Grid;
     const locs = new Set<number>();
@@ -120,7 +126,6 @@ export default function Game() {
       locs.add(Math.floor(Math.random() * rows * cols));
     }
     const locsArr = Array.from(locs);
-    console.log(locsArr);
     for (let loc of locsArr) {
       const r = Math.floor(loc / cols);
       const c = loc % cols;
@@ -137,9 +142,21 @@ export default function Game() {
     return temp;
   }, [retries]);
 
+  useEffect(() => {
+    let intervalId: NodeJS.Timer;
+    if (isRunning) {
+      // setting time from 0 to 1 every 10 milisecond using javascript setInterval method
+      intervalId = setInterval(() => setTime(time + 1), 10);
+    }
+    return () => clearInterval(intervalId);
+  }, [isRunning, time]);
+
   function retry() {
     const status = checkInput();
     flags = 0;
+    console.log(clicks);
+    setIsRunning(false);
+    setTime(0);
     setStatus(status);
     if (status !== "There are more mines than squares!" && status !== "Negative mines!") {
       flags = mines;
@@ -162,12 +179,17 @@ export default function Game() {
   }
 
   function handlePlay(nextGrid: Grid) {
-    if(calculateWin(hidden, nextGrid)) {
-      setStatus("You win!");
+    if (!isRunning) {
+      setIsRunning(true);
     }
-    if(calculateLose(nextGrid)) {
+    if (calculateWin(hidden, nextGrid)) {
+      setStatus("You win!");
+      setIsRunning(false);
+    }
+    if (calculateLose(nextGrid)) {
       setStatus("You lose!");
       revealMines(nextGrid);
+      setIsRunning(false);
     }
     setGrid(nextGrid);
   }
@@ -182,6 +204,8 @@ export default function Game() {
     }
   }
 
+  
+
   // handle mines > r*c
   // optimize mine generation
   // 50/50
@@ -191,12 +215,24 @@ export default function Game() {
         <Board squares={grid} onPlay={handlePlay} hiddenSquares={hidden} />
       </div>
       <div className="game-info">
+        <Timer time={time} />
         <CustomForm refresh={retry} />
         <button onClick={retry}>Retry</button>
         <p>{status}</p>
       </div>
     </div>
   )
+}
+
+function Timer({time}: TimerProps) {
+  const seconds = Math.floor(time / 100);
+  const milliseconds = time % 100;
+
+  return (
+    <div>
+      {seconds}.{milliseconds}
+    </div>
+  );
 }
 
 function CustomForm({refresh}: FormProps) {
