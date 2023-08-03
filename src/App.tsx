@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 
-// chording, retry button, custom difficulty, timer, graphics, snake
+// retry button, custom difficulty, timer, graphics, snake
 type Value = "💥" | "🚩" | "⬜" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 type Grid = Value[][];
 type GridFunc = (grid: Grid, r: number, c: number) => number;
@@ -155,7 +155,11 @@ export default function Game() {
       });
     }
     return temp;
-  }, []);
+  }, [retry]);
+
+  function retry() {
+    setGrid(Array(rows).fill(null).map(x => Array(cols).fill(null)));
+  }
   
 
   function handlePlay(nextGrid: Grid) {
@@ -168,7 +172,8 @@ export default function Game() {
         <Board squares={grid} onPlay={handlePlay} hiddenSquares={hidden} />
       </div>
       <div className="game-info">
-        {status}
+        <button onClick={retry}>Retry</button>
+        <p>{status}</p>
       </div>
     </div>
   )
