@@ -179,6 +179,7 @@ export default function Game() {
   }
 
   function handlePlay(nextGrid: Grid) {
+    console.log(clicks);
     if (!isRunning) {
       setIsRunning(true);
     }
@@ -230,7 +231,7 @@ function Timer({time}: TimerProps) {
 
   return (
     <div>
-      {seconds}.{milliseconds}
+      {seconds}.{String(milliseconds).padStart(2, "0")}
     </div>
   );
 }
