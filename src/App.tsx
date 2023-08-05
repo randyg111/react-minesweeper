@@ -44,10 +44,12 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
     } else if (calculateLose(squares)) {
       return;
     }
+    if (clicks < 0) {
+      clicks = 0;
+    }
     if (e.type === "mousedown") {
       clicks++;
-    }
-    if (e.type === "mouseup") {
+    } else if (e.type === "mouseup") {
       clicks--;
     }
     const nextSquares = squares.map(arr => arr.slice()) as Grid;
@@ -102,13 +104,10 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
     return <div key={r} className="board-row">{boardRow}</div>
   })
 
-  let counter = useMemo(() => {
-    return "🚩 Flag counter: " + flags;
-  }, [flags]);
+  
 
   return (
     <>
-      <div className="status">{counter}</div>
       {board}
     </>
   );
@@ -141,11 +140,13 @@ export default function Game() {
     }
     return temp;
   }, [retries]);
+  let counter = useMemo(() => {
+    return "🚩 Flag counter: " + flags;
+  }, [flags]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timer;
     if (isRunning) {
-      // setting time from 0 to 1 every 10 milisecond using javascript setInterval method
       intervalId = setInterval(() => setTime(time + 1), 10);
     }
     return () => clearInterval(intervalId);
@@ -154,7 +155,6 @@ export default function Game() {
   function retry() {
     const status = checkInput();
     flags = 0;
-    console.log(clicks);
     setIsRunning(false);
     setTime(0);
     setStatus(status);
@@ -205,15 +205,19 @@ export default function Game() {
     }
   }
 
-  
+  function handleMouseLeave(e: React.MouseEvent) {
+    clicks = 0;
+  }
 
-  // handle mines > r*c
   // optimize mine generation
   // 50/50
   return (
     <div className="game">
-      <div className="game-board">
-        <Board squares={grid} onPlay={handlePlay} hiddenSquares={hidden} />
+      <div className="game-display">
+        <div className="status">{counter}</div>
+        <div className="game-board" onMouseLeave={handleMouseLeave}>
+          <Board squares={grid} onPlay={handlePlay} hiddenSquares={hidden} />
+        </div>
       </div>
       <div className="game-info">
         <Timer time={time} />
