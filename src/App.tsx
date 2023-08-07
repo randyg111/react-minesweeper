@@ -1,21 +1,20 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-// beginner/intermediate/expert difficulties, useEffect, mouse manipulation, timer, graphics, snake
+// beginner/intermediate/expert difficulties
+// optimize mine generation, win/lose calculation
+// convert name, github page
+// minesweeper icon, theme
 type Value = "💥" | "🚩" | "⬜" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 type Grid = Value[][];
 type GridFunc = (grid: Grid, r: number, c: number) => number;
 
-var rows = 8;
-var cols = 8;
-var mines = 10;
-var flags = mines;
-var clicks = 0;
-var retries = 0;
-
 interface BoardProps {
   squares: Grid;
   hiddenSquares: Grid;
-  onPlay: (nextGrid: Grid) => void;
+  onPlay: (nextGrid: Grid, nextFlags: number, nextClicks: number, nextRightClick: boolean) => void;
+  flags: number;
+  clicks: number;
+  rightClick: boolean;
 }
 
 interface SquareProps {
@@ -24,7 +23,7 @@ interface SquareProps {
 }
 
 interface FormProps {
-  refresh: () => void;
+  onSubmit: (nextRows: number, nextCols: number, nextMines: number) => void;
 }
 
 interface TimerProps {
@@ -36,7 +35,7 @@ function Square({value, onSquareClick}: SquareProps) {
     onClick={onSquareClick} onContextMenu={onSquareClick}>{value}</button>;
 }
 
-function Board({squares, onPlay, hiddenSquares}: BoardProps) {
+function Board({squares, hiddenSquares, onPlay, flags, clicks, rightClick}: BoardProps) {
   const handleClick = (e: React.MouseEvent, r: number, c: number) => {
     e.preventDefault();
     if (calculateWin(hiddenSquares, squares)) {
@@ -47,20 +46,26 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
     if (clicks < 0) {
       clicks = 0;
     }
+
     if (e.type === "mousedown") {
       clicks++;
+      rightClick = false;
     } else if (e.type === "mouseup") {
       clicks--;
     }
+    // console.log(e.type+" "+clicks);
+  
     const nextSquares = squares.map(arr => arr.slice()) as Grid;
-    if (e.type === "auxclick" || clicks >= 2) {
+    if ((e.type === "auxclick" && !rightClick) || clicks >= 2) {
       handleChord(nextSquares, r, c);
-    } else if (e.type === "click") {
+    } else if (e.type === "click" && clicks === 0) {
       handleLeftClick(nextSquares, r, c);
-    } else if (e.type === "contextmenu") {
+    } else if (e.type === "contextmenu" && clicks === 1) {
+      rightClick = true;
       handleRightClick(nextSquares, r, c);
     }
-    onPlay(nextSquares);
+
+    onPlay(nextSquares, flags, clicks, rightClick);
   };
 
   function handleChord(nextSquares: Grid, r: number, c: number) {
@@ -99,7 +104,7 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
 
   const board = squares.map((row, r) => {
     const boardRow = row.map((square, c) => {
-      return <Square key={c} value={square} onSquareClick={(e: React.MouseEvent) => handleClick(e, r, c)} />
+      return <Square key={r * row.length + c} value={square} onSquareClick={(e: React.MouseEvent) => handleClick(e, r, c)} />
     });
     return <div key={r} className="board-row">{boardRow}</div>
   })
@@ -114,11 +119,18 @@ function Board({squares, onPlay, hiddenSquares}: BoardProps) {
 }
 
 export default function Game() {
+  const [rows, setRows] = useState(9);
+  const [cols, setCols] = useState(9);
+  const [mines, setMines] = useState(10);
+  const [flags, setFlags] = useState(mines);
+  const [clicks, setClicks] = useState(0);
   const [grid, setGrid] = useState<Grid>(Array(rows).fill(null).map(x => Array(cols).fill(null)));
   const [status, setStatus] = useState("Reveal all safe squares to win!");
   const [isRunning, setIsRunning] = useState(false);
   const [time, setTime] = useState(0);
-  const hidden = useMemo(() => {
+  const [rightClick, setRightClick] = useState(false);
+
+  const createHidden = useCallback(() => {
     const temp = Array(rows).fill(null).map(x => Array(cols).fill(0)) as Grid;
     const locs = new Set<number>();
     while (locs.size < mines) {
@@ -139,7 +151,10 @@ export default function Game() {
       });
     }
     return temp;
-  }, [retries]);
+  }, [rows, cols, mines]);
+
+  const [hidden, setHidden] = useState(createHidden);
+
   let counter = useMemo(() => {
     return "🚩 Flag counter: " + flags;
   }, [flags]);
@@ -152,34 +167,33 @@ export default function Game() {
     return () => clearInterval(intervalId);
   }, [isRunning, time]);
 
+  useEffect(retry, [rows, cols, mines, createHidden]);
+
   function retry() {
-    const status = checkInput();
-    flags = 0;
+    const status = (function() {
+      if (mines < 0) {
+        return "Negative mines!";
+      }
+      if (mines > rows * cols) {
+        return "There are more mines than squares!";
+      }
+      if (mines === rows * cols) {
+        return "You win?!";
+      }
+      return "Reveal all safe squares to win!";
+    })();
+    setFlags(0);
     setIsRunning(false);
     setTime(0);
     setStatus(status);
     if (status !== "There are more mines than squares!" && status !== "Negative mines!") {
-      flags = mines;
-      retries++;
+      setFlags(mines);
       setGrid(Array(rows).fill(null).map(x => Array(cols).fill(null)));
+      setHidden(createHidden);
     }
   }
 
-  function checkInput() {
-    if (mines < 0) {
-      return "Negative mines!";
-    }
-    if (mines > rows * cols) {
-      return "There are more mines than squares!";
-    }
-    if (mines === rows * cols) {
-      return "You win?!";
-    }
-    return "Reveal all safe squares to win!";
-  }
-
-  function handlePlay(nextGrid: Grid) {
-    console.log(clicks);
+  function handlePlay(nextGrid: Grid, nextFlags: number, nextClicks: number, nextRightClick: boolean) {
     if (!isRunning) {
       setIsRunning(true);
     }
@@ -193,6 +207,9 @@ export default function Game() {
       setIsRunning(false);
     }
     setGrid(nextGrid);
+    setFlags(nextFlags);
+    setClicks(nextClicks);
+    setRightClick(nextRightClick);
   }
 
   function revealMines(nextSquares: Grid) {
@@ -205,23 +222,27 @@ export default function Game() {
     }
   }
 
-  function handleMouseLeave(e: React.MouseEvent) {
-    clicks = 0;
+  function handleMouseLeave() {
+    setClicks(0);
   }
 
-  // optimize mine generation
-  // 50/50
+  function handleSubmit(nextRows: number, nextCols: number, nextMines: number) {
+    setRows(nextRows);
+    setCols(nextCols);
+    setMines(nextMines);
+  }
+
   return (
     <div className="game">
       <div className="game-display">
         <div className="status">{counter}</div>
         <div className="game-board" onMouseLeave={handleMouseLeave}>
-          <Board squares={grid} onPlay={handlePlay} hiddenSquares={hidden} />
+          <Board squares={grid} onPlay={handlePlay} hiddenSquares={hidden} flags={flags} clicks={clicks} rightClick={rightClick} />
         </div>
       </div>
       <div className="game-info">
         <Timer time={time} />
-        <CustomForm refresh={retry} />
+        <CustomForm onSubmit={handleSubmit} />
         <button onClick={retry}>Retry</button>
         <p>{status}</p>
       </div>
@@ -240,31 +261,25 @@ function Timer({time}: TimerProps) {
   );
 }
 
-function CustomForm({refresh}: FormProps) {
-  const [rowNum, setRowNum] = useState(8);
-  const [colNum, setColNum] = useState(8);
-  const [mineNum, setMineNum] = useState(10);
-  function handleSubmit(e: React.MouseEvent) {
-    rows = rowNum;
-    cols = colNum;
-    mines = mineNum;
-    refresh();
-  }
+function CustomForm({onSubmit}: FormProps) {
+  const [nextRows, setNextRows] = useState(9);
+  const [nextCols, setNextCols] = useState(9);
+  const [nextMines, setNextMines] = useState(10);
   return (
     <div>
       <label>
-        Number of rows: <input value={rowNum} onChange={e => setRowNum(Number(e.target.value))} type="number" />
+        Number of rows: <input value={nextRows} onChange={e => setNextRows(Number(e.target.value))} type="number" />
       </label>
       <br />
       <label>
-        Number of columns: <input value={colNum} onChange={e => setColNum(Number(e.target.value))} type="number" />
+        Number of columns: <input value={nextCols} onChange={e => setNextCols(Number(e.target.value))} type="number" />
       </label>
       <br />
       <label>
-        Number of mines: <input value={mineNum} onChange={e => setMineNum(Number(e.target.value))} type="number" />
+        Number of mines: <input value={nextMines} onChange={e => setNextMines(Number(e.target.value))} type="number" />
       </label>
       <br />
-      <button onClick={handleSubmit}>Submit</button>
+      <button onClick={() => onSubmit(nextRows, nextCols, nextMines)}>Submit</button>
     </div>
   );
 }
