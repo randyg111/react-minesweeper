@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-// leaderboard, guarantee safe start
+// guarantee safe start
 // optimize mine generation, win/lose calculation
-// convert name, github page
+// convert name, github page, beat randy
 // minesweeper icon, theme
 type Value = "💥" | "🚩" | "⬜" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 type Grid = Value[][];
@@ -27,10 +27,6 @@ interface FormProps {
   rows: number;
   cols: number;
   mines: number;
-}
-
-interface TimerProps {
-  time: number;
 }
 
 function Square({value, onSquareClick}: SquareProps) {
@@ -203,6 +199,19 @@ export default function Game() {
     if (calculateWin(hidden, nextGrid)) {
       setStatus("You win!");
       setIsRunning(false);
+      let difficulty;
+      if (rows === 9 && cols === 9 && mines === 10) {
+        difficulty = "Beginner";
+      } else if(rows === 16 && cols === 16 && mines === 40) {
+        difficulty = "Intermediate";
+      } else if(rows === 16 && cols === 30 && mines === 99) {
+        difficulty = "Expert";
+      }
+      const best = localStorage.getItem("best" + difficulty + "Time");
+      const current = formatTime(time);
+      if (Number(current) < Number(best) || best === null) {
+        localStorage.setItem("best" + difficulty + "Time", current);
+      }
     }
     if (calculateLose(nextGrid)) {
       setStatus("You lose!");
@@ -262,27 +271,20 @@ export default function Game() {
         </div>
       </div>
       <div className="game-info">
-        <Timer time={time} />
+        <div>{formatTime(time)}</div>
         <button onClick={handleBeginnerClick}>Beginner</button>
         <button onClick={handleIntermediateClick}>Intermediate</button>
         <button onClick={handleExpertClick}>Expert</button>
         <CustomForm onSubmit={handleSubmit} rows={rows} cols={cols} mines={mines} />
         <button onClick={retry}>Retry</button>
         <p>{status}</p>
+        <p>Best beginner time: {localStorage.getItem("bestBeginnerTime")}</p>
+        <p>Best intermediate time: {localStorage.getItem("bestIntermediateTime")}</p>
+        <p>Best expert time: {localStorage.getItem("bestExpertTime")}</p>
+        {/* <input checked={false} /> */}
       </div>
     </div>
   )
-}
-
-function Timer({time}: TimerProps) {
-  const seconds = Math.floor(time / 100);
-  const milliseconds = time % 100;
-
-  return (
-    <div>
-      {seconds}.{String(milliseconds).padStart(2, "0")}
-    </div>
-  );
 }
 
 function CustomForm({onSubmit, rows, cols, mines}: FormProps) {
@@ -298,7 +300,6 @@ function CustomForm({onSubmit, rows, cols, mines}: FormProps) {
   if (mines !== nextMines) {
     setNextMines(mines);
   }
-  console.log(nextRows);
   return (
     <div>
       <label>
@@ -316,6 +317,12 @@ function CustomForm({onSubmit, rows, cols, mines}: FormProps) {
       <button onClick={() => onSubmit(nextRows, nextCols, nextMines)}>Submit</button>
     </div>
   );
+}
+
+function formatTime(time: number) {
+  const seconds = Math.floor(time / 100);
+  const milliseconds = time % 100;
+  return seconds + "." + String(milliseconds).padStart(2, "0");
 }
 
 function calculateWin(hidden:Grid, squares: Grid) {
