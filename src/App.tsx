@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-// beginner/intermediate/expert difficulties
+// leaderboard, guarantee safe start
 // optimize mine generation, win/lose calculation
 // convert name, github page
 // minesweeper icon, theme
@@ -24,6 +24,9 @@ interface SquareProps {
 
 interface FormProps {
   onSubmit: (nextRows: number, nextCols: number, nextMines: number) => void;
+  rows: number;
+  cols: number;
+  mines: number;
 }
 
 interface TimerProps {
@@ -232,6 +235,24 @@ export default function Game() {
     setMines(nextMines);
   }
 
+  function handleBeginnerClick() {
+    setRows(9);
+    setCols(9);
+    setMines(10);
+  }
+
+  function handleIntermediateClick() {
+    setRows(16);
+    setCols(16);
+    setMines(40);
+  }
+
+  function handleExpertClick() {
+    setRows(16);
+    setCols(30);
+    setMines(99);
+  }
+
   return (
     <div className="game">
       <div className="game-display">
@@ -242,7 +263,10 @@ export default function Game() {
       </div>
       <div className="game-info">
         <Timer time={time} />
-        <CustomForm onSubmit={handleSubmit} />
+        <button onClick={handleBeginnerClick}>Beginner</button>
+        <button onClick={handleIntermediateClick}>Intermediate</button>
+        <button onClick={handleExpertClick}>Expert</button>
+        <CustomForm onSubmit={handleSubmit} rows={rows} cols={cols} mines={mines} />
         <button onClick={retry}>Retry</button>
         <p>{status}</p>
       </div>
@@ -261,10 +285,20 @@ function Timer({time}: TimerProps) {
   );
 }
 
-function CustomForm({onSubmit}: FormProps) {
-  const [nextRows, setNextRows] = useState(9);
-  const [nextCols, setNextCols] = useState(9);
-  const [nextMines, setNextMines] = useState(10);
+function CustomForm({onSubmit, rows, cols, mines}: FormProps) {
+  const [nextRows, setNextRows] = useState(rows);
+  const [nextCols, setNextCols] = useState(cols);
+  const [nextMines, setNextMines] = useState(mines);
+  if (rows !== nextRows) {
+    setNextRows(rows);
+  }
+  if (cols !== nextCols) {
+    setNextCols(cols);
+  }
+  if (mines !== nextMines) {
+    setNextMines(mines);
+  }
+  console.log(nextRows);
   return (
     <div>
       <label>
