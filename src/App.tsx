@@ -8,6 +8,12 @@ type Value = "💥" | "🚩" | "⬜" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 type Grid = Value[][];
 type GridFunc = (grid: Grid, r: number, c: number) => number;
 
+enum Difficulty {
+  beginner = "Beginner",
+  intermediate = "Intermediate", 
+  expert = "Expert",
+}
+
 interface BoardProps {
   squares: Grid;
   hiddenSquares: Grid;
@@ -15,6 +21,7 @@ interface BoardProps {
   flags: number;
   clicks: number;
   rightClick: boolean;
+  checkSafeStart: (r: number, c: number) => Grid | null;
 }
 
 interface SquareProps {
@@ -34,7 +41,9 @@ function Square({value, onSquareClick}: SquareProps) {
     onClick={onSquareClick} onContextMenu={onSquareClick}>{value}</button>;
 }
 
-function Board({squares, hiddenSquares, onPlay, flags, clicks, rightClick}: BoardProps) {
+function Board({squares, hiddenSquares, onPlay, flags, clicks, rightClick, checkSafeStart}: BoardProps) {
+  let safe = false;
+
   const handleClick = (e: React.MouseEvent, r: number, c: number) => {
     e.preventDefault();
     if (calculateWin(hiddenSquares, squares)) {
@@ -91,6 +100,13 @@ function Board({squares, hiddenSquares, onPlay, flags, clicks, rightClick}: Boar
 
   function handleLeftClick(nextSquares: Grid, r: number, c: number) {
     if (r < 0 || c < 0 || r >= nextSquares.length || c >= nextSquares[0].length || nextSquares[r][c] !== null) return 0;
+    if (!safe) {
+      const hidden = checkSafeStart(r, c);
+      if (hidden) {
+        hiddenSquares = hidden;
+        safe = true;
+      }
+    }
     if (hiddenSquares[r][c] === 0) {
       hiddenSquares[r][c] = "⬜";
       nextSquares[r][c] = "⬜";
@@ -128,6 +144,8 @@ export default function Game() {
   const [isRunning, setIsRunning] = useState(false);
   const [time, setTime] = useState(0);
   const [rightClick, setRightClick] = useState(false);
+  const [safeStart, setSafeStart] = useState(false);
+  const [startedSafe, setStartedSafe] = useState(false);
 
   const createHidden = useCallback(() => {
     const temp = Array(rows).fill(null).map(x => Array(cols).fill(0)) as Grid;
@@ -185,6 +203,7 @@ export default function Game() {
     setIsRunning(false);
     setTime(0);
     setStatus(status);
+    setStartedSafe(false);
     if (status !== "There are more mines than squares!" && status !== "Negative mines!") {
       setFlags(mines);
       setGrid(Array(rows).fill(null).map(x => Array(cols).fill(null)));
@@ -199,18 +218,14 @@ export default function Game() {
     if (calculateWin(hidden, nextGrid)) {
       setStatus("You win!");
       setIsRunning(false);
-      let difficulty;
-      if (rows === 9 && cols === 9 && mines === 10) {
-        difficulty = "Beginner";
-      } else if(rows === 16 && cols === 16 && mines === 40) {
-        difficulty = "Intermediate";
-      } else if(rows === 16 && cols === 30 && mines === 99) {
-        difficulty = "Expert";
-      }
-      const best = localStorage.getItem("best" + difficulty + "Time");
-      const current = formatTime(time);
-      if (Number(current) < Number(best) || best === null) {
-        localStorage.setItem("best" + difficulty + "Time", current);
+      
+      const difficulty = getDifficulty();
+      if (difficulty !== null) {
+        const best = localStorage.getItem("best" + difficulty + "Time");
+        const current = formatTime(time);
+        if (Number(current) < Number(best) || best === null) {
+          localStorage.setItem("best" + difficulty + "Time", current);
+        }
       }
     }
     if (calculateLose(nextGrid)) {
@@ -222,6 +237,17 @@ export default function Game() {
     setFlags(nextFlags);
     setClicks(nextClicks);
     setRightClick(nextRightClick);
+  }
+
+  function getDifficulty() {
+    if (rows === 9 && cols === 9 && mines === 10) {
+      return Difficulty.beginner;
+    } else if(rows === 16 && cols === 16 && mines === 40) {
+      return Difficulty.intermediate;
+    } else if(rows === 16 && cols === 30 && mines === 99) {
+      return Difficulty.expert;
+    }
+    return null;
   }
 
   function revealMines(nextSquares: Grid) {
@@ -262,26 +288,54 @@ export default function Game() {
     setMines(99);
   }
 
+  const bestTimes = (function() {
+    const safe = safeStart ? "WithSafeStart" : "";
+    const safeDisplay = safeStart ? " with Safe Start" : "";
+    const vals = Object.values(Difficulty);
+    const times = vals.map((val, i) => {
+      return <p key={i}>Best {val} time{safeDisplay}: {localStorage.getItem("best"+val+"Time"+safe)}</p>
+    });
+    return (
+      <>
+        {times}
+      </>
+    );
+  })();
+
+  function checkSafeStart(r: number, c: number) {
+    if (safeStart && !startedSafe) {
+      console.log("test")
+      let nextHidden = hidden.map(arr => arr.slice()) as Grid;
+      while (nextHidden[r][c] !== 0) {
+        nextHidden = createHidden();
+      }
+      setHidden(nextHidden);
+      setStartedSafe(true);
+      return nextHidden;
+    }
+    return null;
+  }
+
   return (
     <div className="game">
       <div className="game-display">
         <div className="status">{counter}</div>
         <div className="game-board" onMouseLeave={handleMouseLeave}>
-          <Board squares={grid} onPlay={handlePlay} hiddenSquares={hidden} flags={flags} clicks={clicks} rightClick={rightClick} />
+          <Board squares={grid} onPlay={handlePlay} hiddenSquares={hidden} flags={flags} clicks={clicks} rightClick={rightClick} checkSafeStart={checkSafeStart} />
         </div>
       </div>
       <div className="game-info">
         <div>{formatTime(time)}</div>
-        <button onClick={handleBeginnerClick}>Beginner</button>
-        <button onClick={handleIntermediateClick}>Intermediate</button>
-        <button onClick={handleExpertClick}>Expert</button>
+        <button onClick={handleBeginnerClick}>{Difficulty.beginner}</button>
+        <button onClick={handleIntermediateClick}>{Difficulty.intermediate}</button>
+        <button onClick={handleExpertClick}>{Difficulty.expert}</button>
         <CustomForm onSubmit={handleSubmit} rows={rows} cols={cols} mines={mines} />
         <button onClick={retry}>Retry</button>
         <p>{status}</p>
-        <p>Best beginner time: {localStorage.getItem("bestBeginnerTime")}</p>
-        <p>Best intermediate time: {localStorage.getItem("bestIntermediateTime")}</p>
-        <p>Best expert time: {localStorage.getItem("bestExpertTime")}</p>
-        {/* <input checked={false} /> */}
+        {bestTimes}
+        <label>
+          Safe Start: <input checked={safeStart} onChange={() => {setSafeStart(!safeStart)}}type="checkbox" />
+        </label>
       </div>
     </div>
   )
