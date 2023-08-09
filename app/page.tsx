@@ -146,6 +146,11 @@ export default function Game() {
   const [rightClick, setRightClick] = useState(false);
   const [safeStart, setSafeStart] = useState(false);
   const [startedSafe, setStartedSafe] = useState(false);
+  const [isClient, setIsClient] = useState(false)
+ 
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const createHidden = useCallback(() => {
     const temp = Array(rows).fill(null).map(x => Array(cols).fill(0)) as Grid;
@@ -317,13 +322,13 @@ export default function Game() {
   }
 
   function getLocalStorage(k: string) {
-    if (typeof window !== "undefined") {
+    if (isClient) {
       return localStorage.getItem(k);
     }
   }
 
   function setLocalStorage(k: string, v: string) {
-    if (typeof window !== "undefined") {
+    if (isClient) {
       return localStorage.setItem(k, v);
     }
   }
