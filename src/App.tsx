@@ -345,15 +345,15 @@ function CustomForm({onSubmit, rows, cols, mines}: FormProps) {
   const [nextRows, setNextRows] = useState(rows);
   const [nextCols, setNextCols] = useState(cols);
   const [nextMines, setNextMines] = useState(mines);
-  if (rows !== nextRows) {
-    setNextRows(rows);
-  }
-  if (cols !== nextCols) {
-    setNextCols(cols);
-  }
-  if (mines !== nextMines) {
-    setNextMines(mines);
-  }
+  // if (rows !== nextRows) {
+  //   setNextRows(rows);
+  // }
+  // if (cols !== nextCols) {
+  //   setNextCols(cols);
+  // }
+  // if (mines !== nextMines) {
+  //   setNextMines(mines);
+  // }
   return (
     <div>
       <label>

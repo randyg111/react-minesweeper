@@ -10,12 +10,16 @@
   },
   "main": "/index.js",
   "devDependencies": {
-    "@types/react": "^18.2.18"
+    "@types/react": "^18.2.18",
+    "gh-pages": "^6.1.1"
   },
   "name": "minesweeper",
   "description": "Minesweeper in React",
   "version": "0.0.0",
+  "homepage": "https://randyg111.github.io/react-minesweeper",
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build --nojekyll",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
