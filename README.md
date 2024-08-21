@@ -1,3 +1,3 @@
 # How to Play
 
-Play this game at [randyg111.github.io/react-minesweeper](randyg111.github.io/react-minesweeper)
+Play this game at [https://randyg111.github.io/react-minesweeper](https://randyg111.github.io/react-minesweeper)
